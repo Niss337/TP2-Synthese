@@ -10,7 +10,7 @@ void handle_arguments(int argc, char *argv[], const char **host, const char **fi
     *host = argv[1]; // Retrieve the host
     *filename = argv[2]; // Retrieve the filename
 }
-// Main function
+// Main function 
 int main(int argc, char *argv[]) {
     const char *host;
     const char *filename;
