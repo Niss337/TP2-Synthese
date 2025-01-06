@@ -1,0 +1,9 @@
+#ifndef TFTP_UTILS_H
+#define TFTP_UTILS_H
+
+#include <netdb.h> // use in struct addrinfo
+
+void send_rrq(int sockfd, struct addrinfo *res, const char *file);
+void receive_packets(int sockfd, const char *remote_file);
+
+#endif // TFTP_UTILS_H
