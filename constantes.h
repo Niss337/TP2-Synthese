@@ -1,17 +1,16 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#define TFTP_PORT "1069"      // TFTP port to connect to
-#define BUFFER_SIZE 516        // Maximum size of TFTP packets
-#define TIMEOUT_SEC 5          // Timeout for receiving packets
-
-
-#define USAGE_MSG "Usage: %s <host> <file>\n"
-#define ERROR_OPENING_FILE "Error opening file for writing\n"
-#define RECV_BLOCK_MSG "Received block %d\n"
-#define FILE_TRANSFER_COMPLETE "File transfer complete.\n"
-#define GETADDRINFO_ERROR "getaddrinfo\n"
-#define SOCKET_ERROR "socket\n"
-#define RECVFROM_ERROR "recvfrom\n"
+#define TFTP_PORT "1069"
+#define BUFFER_SIZE 512
+#define TIMEOUT_SEC 5
+#define USAGE_MSG "Usage: %s <command> <server> <filename>\n"
+#define SOCKET_ERROR "Failed to create socket"
+#define GETADDRINFO_ERROR "Failed to get address info"
+#define FILE_TRANSFER_COMPLETE "File transfer completed successfully\n"
+#define ERROR_OPENING_FILE "Error opening file"
+#define ERROR_READING_FILE "Error reading file"
+#define RECVFROM_ERROR "Error receiving data"
+#define RECV_BLOCK_MSG "Received block number: %d\n"
 
 #endif // CONSTANTS_H
