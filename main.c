@@ -3,67 +3,58 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 #include "constants.h"
 #include "tftp_utils.h"
+#include "pull.h"
 
-// Function to send a Read Request (RRQ) to the TFTP server
-void send_rrq(int sockfd, struct addrinfo *res, const char *file) {
-    char buffer[BUFFER_SIZE];
-    int filename_len = strlen(file);
-    const char *mode = "octet";  // Mode for binary transfer
-    int mode_len = strlen(mode);
-
-    // Build the RRQ packet
-    buffer[0] = 0;               // Opcode MSB
-    // This is the first byte of the opcode, which is always 0 for TFTP Read Request (RRQ).
-    buffer[1] = 1;               // Opcode LSB (RRQ)
-    // This is the second byte of the opcode, which is set to 1 to indicate a Read Request (RRQ) operation in TFTP.
-    memcpy(buffer + 2, file, filename_len);
-     buffer[2 + filename_len] = 0; // Null byte after the filename
-    memcpy(buffer + 3 + filename_len, mode, mode_len);
-    buffer[3 + filename_len + mode_len] = 0; 
-
-    // Send the RRQ to the server
-    sendto(sockfd, buffer, 4 + filename_len + mode_len, 0, res->ai_addr, res->ai_addrlen);
+void print_usage(const char *program_name) {
+    fprintf(stderr, USAGE_MSG, program_name);
 }
-// Function to receive packets from the TFTP server
-void receive_packets(int sockfd, const char *remote_file) {
-    char buffer[BUFFER_SIZE];
-    struct sockaddr_storage server_addr;
-    socklen_t addr_len = sizeof(server_addr);
-    int block_number = 1; // Initialize block number for ACK
 
-    // Set timeout for receiving packets
-    struct timeval tv = {TIMEOUT_SEC, 0};
-    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-    // Open the file for writing 
-    // This is essential for creating a new file or overwriting an existing one to store 
-    FILE *fp = fopen(remote_file, "wb");
-    if (!fp) {
-        perror(ERROR_OPENING_FILE);
-        return;
+int main(int argc, char *argv[]) {
+    if (argc != 4) {
+        print_usage(argv[0]);
+        return EXIT_FAILURE;
+         }
+
+    struct addrinfo hints = {0}, *res;
+    hints.ai_family = AF_INET; // IPv4
+    hints.ai_socktype = SOCK_DGRAM; // UDP
+
+    // Get address information for the specified host
+    if (getaddrinfo(argv[2], TFTP_PORT, &hints, &res) != 0) {
+        perror(GETADDRINFO_ERROR);
+        return EXIT_FAILURE;
     }
 
-    while (1) {
-        // Receive data from the server
-        int n = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&server_addr, &addr_len);
-        if (n < 0) {
-            perror(RECVFROM_ERROR);
-            break; // in case error
-        }
-// Check if it is a data packet
-        if (buffer[1] == 3 && (buffer[2] << 8 | buffer[3]) == block_number) {
-            // Write the data to file
-            fwrite(buffer + 4, 1, n - 4, fp);
-            printf(RECV_BLOCK_MSG, block_number);
-            
-            // Send ACK for the received block
-            char ack[4] = {0, 4, buffer[2], buffer[3]};
-            sendto(sockfd, ack, sizeof(ack), 0, (struct sockaddr*)&server_addr, addr_len);
-             block_number++; 
-            if (n < BUFFER_SIZE) break; // Last block received
-        }
+    // Create a socket for communication
+    int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if (sockfd < 0) {
+        perror(SOCKET_ERROR);
+         freeaddrinfo(res); // Free address information
+        return EXIT_FAILURE;
     }
 
-    fclose(fp); // Close the file after writing we done 
+    // Check the command
+    if (strcmp(argv[1], "gettftp") == 0) {
+        
+        send_rrq(sockfd, res, argv[3]);
+        receive_packets(sockfd, argv[3]); 
+    } else if (strcmp(argv[1], "puttftp") == 0) {
+        // Execute the write operation
+        send_wrq(sockfd, res, argv[3]); 
+        send_data(sockfd, res, argv[3]); 
+    } else {
+        // Handle other commands
+        fprintf(stderr, "Unrecognized command: %s\n", argv[1]);
+        print_usage(argv[0]);
+        close(sockfd);
+        freeaddrinfo(res);
+        return EXIT_FAILURE;
+    }
+ freeaddrinfo(res); // Free address information
+    close(sockfd); // Close the socket
+    printf(FILE_TRANSFER_COMPLETE); // Indicate successful completion
+    return EXIT_SUCCESS; // Indicate successful execution
 }
